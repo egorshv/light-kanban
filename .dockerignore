@@ -1,0 +1,12 @@
+**/node_modules
+**/__pycache__
+**/.venv
+**/.pytest_cache
+**/.ruff_cache
+frontend/dist
+e2e
+data
+*.db
+*.db-wal
+*.db-shm
+.git
