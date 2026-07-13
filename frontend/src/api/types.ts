@@ -1,6 +1,17 @@
 export type Priority = 'low' | 'normal' | 'high' | 'urgent';
 export type LinkType = 'blocks' | 'subtask_of' | 'relates_to' | 'duplicates';
 
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: User;
+}
+
 export interface Board {
   id: string;
   name: string;

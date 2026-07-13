@@ -5,8 +5,8 @@ import sqlite3
 
 def insert(conn: sqlite3.Connection, row: dict) -> None:
     conn.execute(
-        "INSERT INTO boards (id, name, description, created_at, updated_at, archived_at)"
-        " VALUES (:id, :name, :description, :created_at, :updated_at, :archived_at)",
+        "INSERT INTO boards (id, owner_id, name, description, created_at, updated_at, archived_at)"
+        " VALUES (:id, :owner_id, :name, :description, :created_at, :updated_at, :archived_at)",
         row,
     )
 
@@ -15,11 +15,12 @@ def get(conn: sqlite3.Connection, board_id: str):
     return conn.execute("SELECT * FROM boards WHERE id = ?", (board_id,)).fetchone()
 
 
-def list_all(conn: sqlite3.Connection, include_archived: bool):
-    where = "" if include_archived else "WHERE b.archived_at IS NULL"
+def list_all(conn: sqlite3.Connection, user_id: str, include_archived: bool):
+    where = "" if include_archived else "AND b.archived_at IS NULL"
     return conn.execute(
         f"SELECT b.*, (SELECT COUNT(*) FROM tasks t WHERE t.board_id = b.id) AS task_count"
-        f" FROM boards b {where} ORDER BY b.created_at",
+        f" FROM boards b WHERE b.owner_id = ? {where} ORDER BY b.created_at",
+        (user_id,),
     ).fetchall()
 
 

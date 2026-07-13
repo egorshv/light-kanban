@@ -29,7 +29,7 @@ Backend: Python 3.12+/FastAPI/stdlib sqlite3, managed by **uv** (run everything 
 
 ## What is being built
 
-A lightweight, local-first, API-first personal Kanban tracker: boards → columns → tasks, plus typed directed links between tasks. Single user, no auth beyond an optional static bearer token (`KANBAN_TOKEN`, empty ⇒ auth off). Data lives in a single SQLite file (`KANBAN_DB_PATH`). UI language is Russian (strings externalized for future i18n). One docker-compose service serves API + SPA from the same process.
+A lightweight, API-first Kanban tracker: boards → columns → tasks, plus typed directed links between tasks. Multi-user with mandatory JWT auth (email+password sign-up/sign-in and Google OAuth via `services/auth.py`); each board has an `owner_id`, data is isolated per user (foreign board ⇒ 404, ownership checked in `boards_service.get_board`). `KANBAN_JWT_SECRET` is required at startup. Data lives in a single SQLite file (`KANBAN_DB_PATH`). UI language is Russian (strings externalized for future i18n). One docker-compose service serves API + SPA from the same process.
 
 ## Binding architecture decisions (from docs.md §7)
 

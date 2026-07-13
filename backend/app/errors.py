@@ -14,6 +14,11 @@ class ValidationError(DomainError):  # -> 400
         super().__init__(code, message)
 
 
+class Unauthorized(DomainError):  # -> 401
+    def __init__(self, message: str = "Требуется аутентификация", code: str = "UNAUTHORIZED"):
+        super().__init__(code, message)
+
+
 class NotFound(DomainError):  # -> 404
     def __init__(self, message: str, code: str = "NOT_FOUND"):
         super().__init__(code, message)

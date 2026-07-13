@@ -1,8 +1,8 @@
-import os
+from fastapi import Header, Request
 
-from fastapi import Header, HTTPException, Request
-
+from app.errors import Unauthorized
 from app.repo import db
+from app.services import auth as auth_service
 
 
 def get_conn(request: Request):
@@ -13,8 +13,8 @@ def get_conn(request: Request):
         conn.close()
 
 
-def require_auth(authorization: str | None = Header(default=None)) -> None:
-    """ADR-009: KANBAN_TOKEN пуст ⇒ аутентификация выключена (локальный режим)."""
-    token = os.environ.get("KANBAN_TOKEN", "")
-    if token and authorization != f"Bearer {token}":
-        raise HTTPException(status_code=401, detail="Требуется корректный bearer-токен")
+def current_user_id(authorization: str | None = Header(default=None)) -> str:
+    """JWT из Authorization: Bearer → id пользователя. Иначе 401."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise Unauthorized()
+    return auth_service.verify_jwt(authorization[7:])

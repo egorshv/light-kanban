@@ -29,6 +29,15 @@ export function BoardsPage() {
         <button className="primary" data-testid="new-board-button" onClick={() => setCreating(true)}>
           {ru.newBoard}
         </button>
+        <button
+          data-testid="logout-button"
+          onClick={() => {
+            localStorage.removeItem('kanban_token');
+            window.location.reload();
+          }}
+        >
+          {ru.logout}
+        </button>
       </header>
 
       {isLoading ? (
