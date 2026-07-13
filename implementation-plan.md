@@ -68,7 +68,7 @@ repo/      SQL и только SQL; никаких правил
 
 - FastAPI раздаёт собранную SPA через `StaticFiles` (SPA-fallback на `index.html`) — один процесс, один порт, как рекомендует §7.
 - Один **multi-stage Dockerfile**: стадия node (сборка фронта) → стадия python (uv sync + копия статики). `docker-compose.yml` — один сервис, volume для файла SQLite.
-- Конфигурация через env: `KANBAN_DB_PATH`, `KANBAN_TOKEN` (пусто ⇒ аутентификация выключена — локальный режим), `KANBAN_LOG_LEVEL`. Проверка bearer-токена — одна FastAPI-dependency на роутер.
+- Конфигурация через env: `KANBAN_DB_PATH`, `KANBAN_LOG_LEVEL`. ~~`KANBAN_TOKEN` (пусто ⇒ аутентификация выключена)~~ — статический токен заменён обязательной JWT-аутентификацией (email+пароль и Google OAuth, `KANBAN_JWT_SECRET`/`KANBAN_JWT_TTL`/`GOOGLE_*`); доски принадлежат пользователям (`boards.owner_id`). Проверка JWT — одна FastAPI-dependency (`current_user_id`) на роутер.
 - HTTPS — забота reverse-proxy пользователя (§4), в приложении не реализуется.
 
 ### ADR-010. Наблюдаемость и события домена

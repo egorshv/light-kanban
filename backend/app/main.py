@@ -13,8 +13,8 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.api import boards, columns, errors, links, tasks
-from app.api.deps import require_auth
+from app.api import auth, boards, columns, errors, links, tasks
+from app.api.deps import current_user_id
 from app.repo import db
 
 access_log = logging.getLogger("kanban.access")
@@ -56,6 +56,8 @@ def _static_dir() -> Path | None:
 
 def create_app(db_path: str | None = None) -> FastAPI:
     setup_logging()
+    if not os.environ.get("KANBAN_JWT_SECRET"):
+        raise RuntimeError("KANBAN_JWT_SECRET обязателен (см. README)")
     db_path = db_path or os.environ.get("KANBAN_DB_PATH", "kanban.db")
     conn = db.connect(db_path)
     db.migrate(conn)
@@ -71,7 +73,9 @@ def create_app(db_path: str | None = None) -> FastAPI:
     def health():
         return {"status": "ok"}
 
-    protected = [Depends(require_auth)]
+    api.include_router(auth.router)  # публичный: /me защищается сам
+
+    protected = [Depends(current_user_id)]
     for router in (boards.router, columns.router, tasks.router, links.router):
         api.include_router(router, dependencies=protected)
     app.include_router(api)

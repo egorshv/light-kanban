@@ -5,7 +5,7 @@ dev: ## бэкенд (:8000) и фронтенд (:5173) параллельно
 	$(MAKE) -j2 dev-backend dev-frontend
 
 dev-backend:
-	cd backend && uv run uvicorn app.main:create_app --factory --reload --port 8000
+	cd backend && KANBAN_JWT_SECRET=$${KANBAN_JWT_SECRET:-dev-secret} uv run uvicorn app.main:create_app --factory --reload --port 8000
 
 dev-frontend:
 	cd frontend && npm run dev

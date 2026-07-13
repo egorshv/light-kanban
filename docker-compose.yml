@@ -6,7 +6,11 @@ services:
     volumes:
       - ./data:/data   # бэкап = копия файла ./data/kanban.db
     environment:
-      KANBAN_TOKEN: ${KANBAN_TOKEN:-}          # пусто ⇒ аутентификация выключена
+      KANBAN_JWT_SECRET: ${KANBAN_JWT_SECRET:?Задайте KANBAN_JWT_SECRET}
+      KANBAN_JWT_TTL: ${KANBAN_JWT_TTL:-86400}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}      # пусто ⇒ вход через Google отключён
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
       KANBAN_LOG_LEVEL: ${KANBAN_LOG_LEVEL:-INFO}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]

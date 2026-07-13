@@ -4,6 +4,31 @@ import { expect, Page, test } from '@playwright/test';
 
 const uniq = () => `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
+// Auth обязательна: уникальный пользователь на тест ⇒ пустой список досок и полная изоляция.
+test.beforeEach(async ({ page, request }) => {
+  const res = await request.post('/api/v1/auth/register', {
+    data: { email: `e2e-${uniq()}@test.ru`, password: 'password1' },
+  });
+  const { token } = await res.json();
+  await page.addInitScript((t: string) => localStorage.setItem('kanban_token', t), token);
+});
+
+// Чистый контекст (без initScript с токеном): полный цикл регистрация → logout.
+test('регистрация через UI и выход', async ({ browser }) => {
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  await page.goto('/');
+  await expect(page.getByTestId('auth-email-input')).toBeVisible();
+  await page.getByTestId('auth-mode-toggle').click();
+  await page.getByTestId('auth-email-input').fill(`ui-${uniq()}@test.ru`);
+  await page.getByTestId('auth-password-input').fill('password1');
+  await page.getByTestId('auth-submit').click();
+  await expect(page.getByTestId('new-board-button')).toBeVisible();
+  await page.getByTestId('logout-button').click();
+  await expect(page.getByTestId('auth-email-input')).toBeVisible();
+  await ctx.close();
+});
+
 async function createBoard(page: Page, name: string) {
   await page.goto('/');
   await page.getByTestId('new-board-button').click();

@@ -5,9 +5,22 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.errors import Conflict, DomainError, DomainRuleViolation, NotFound, ValidationError
+from app.errors import (
+    Conflict,
+    DomainError,
+    DomainRuleViolation,
+    NotFound,
+    Unauthorized,
+    ValidationError,
+)
 
-_STATUS = ((ValidationError, 400), (NotFound, 404), (Conflict, 409), (DomainRuleViolation, 422))
+_STATUS = (
+    (ValidationError, 400),
+    (Unauthorized, 401),
+    (NotFound, 404),
+    (Conflict, 409),
+    (DomainRuleViolation, 422),
+)
 _HTTP_CODES = {401: "UNAUTHORIZED", 404: "NOT_FOUND", 405: "METHOD_NOT_ALLOWED"}
 
 

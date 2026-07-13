@@ -3,15 +3,17 @@
 from app.errors import DomainRuleViolation, NotFound
 from app.repo import links as links_repo
 from app.repo import tasks as tasks_repo
+from app.services import boards as boards_service
 from app.services.common import LINK_TYPES, check_enum, log_event, new_id, now_iso
 
 CYCLE_CHECKED = ("blocks", "subtask_of")
 
 
-def _get_task(conn, task_id: str, role: str) -> dict:
+def _get_task(conn, user_id: str, task_id: str, role: str) -> dict:
     row = tasks_repo.get(conn, task_id)
     if row is None:
         raise NotFound(f"Задача ({role}) не найдена")
+    boards_service.get_board(conn, user_id, row["board_id"])  # обе стороны — только свои доски
     return dict(row)
 
 
@@ -31,10 +33,12 @@ def _find_path(conn, start: str, goal: str, link_type: str) -> list[str] | None:
     return None
 
 
-def create_link(conn, source_task_id: str, target_task_id: str, link_type: str) -> dict:
+def create_link(
+    conn, user_id: str, source_task_id: str, target_task_id: str, link_type: str
+) -> dict:
     check_enum(link_type, LINK_TYPES, "link_type")
-    source = _get_task(conn, source_task_id, "источник")
-    _get_task(conn, target_task_id, "цель")
+    source = _get_task(conn, user_id, source_task_id, "источник")
+    _get_task(conn, user_id, target_task_id, "цель")
     if source_task_id == target_task_id:
         raise DomainRuleViolation("SELF_LINK", "Нельзя связать задачу с самой собой")
     if links_repo.exists(conn, source_task_id, target_task_id, link_type):
@@ -49,7 +53,9 @@ def create_link(conn, source_task_id: str, target_task_id: str, link_type: str) 
     if link_type in CYCLE_CHECKED:
         path = _find_path(conn, target_task_id, source_task_id, link_type)
         if path is not None:
-            titles = [source["title"]] + [_get_task(conn, tid, "цикл")["title"] for tid in path]
+            titles = [source["title"]] + [
+                _get_task(conn, user_id, tid, "цикл")["title"] for tid in path
+            ]
             raise DomainRuleViolation("LINK_CYCLE", "Связь создаёт цикл: " + " → ".join(titles))
     link = {
         "id": new_id(),
@@ -64,9 +70,12 @@ def create_link(conn, source_task_id: str, target_task_id: str, link_type: str) 
     return link
 
 
-def delete_link(conn, link_id: str) -> None:
-    if links_repo.get(conn, link_id) is None:
+def delete_link(conn, user_id: str, link_id: str) -> None:
+    link = links_repo.get(conn, link_id)
+    if link is None:
         raise NotFound("Связь не найдена")
+    # связи существуют только между досками одного владельца — проверки источника достаточно
+    _get_task(conn, user_id, link["source_task_id"], "источник")
     with conn:
         links_repo.delete(conn, link_id)
     log_event("link.deleted", link_id=link_id)

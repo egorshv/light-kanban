@@ -101,6 +101,17 @@ h1, h2, h3 { margin: 0; }
 .dialog-message { margin: 0; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 
+/* ---------- Вход / регистрация ---------- */
+.auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.auth-form { width: 320px; }
+.auth-google { text-align: center; color: #2563eb; text-decoration: none; font-size: 13px; }
+.auth-google:hover { text-decoration: underline; }
+.link-button {
+  background: none; border: none; padding: 0;
+  color: #6b7280; font-size: 13px; cursor: pointer;
+}
+.link-button:hover { text-decoration: underline; }
+
 /* ---------- Доска ---------- */
 .board-page { overflow: hidden; }
 .board-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }

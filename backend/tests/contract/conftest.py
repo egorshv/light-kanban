@@ -6,9 +6,14 @@ from app.main import create_app
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
-    monkeypatch.delenv("KANBAN_TOKEN", raising=False)
+    monkeypatch.setenv("KANBAN_JWT_SECRET", "test-secret")
     app = create_app(db_path=str(tmp_path / "test.db"))
     with TestClient(app) as c:
+        token = c.post(
+            "/api/v1/auth/register",
+            json={"email": "user@test.ru", "password": "password1"},
+        ).json()["token"]
+        c.headers["Authorization"] = f"Bearer {token}"
         yield c
 
 

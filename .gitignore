@@ -8,6 +8,7 @@ frontend/dist/
 e2e/test-results/
 e2e/playwright-report/
 data/
+.env
 *.db
 *.db-wal
 *.db-shm

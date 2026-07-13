@@ -3,17 +3,18 @@
 from datetime import date
 
 from app.errors import Conflict, NotFound, ValidationError
-from app.repo import boards as boards_repo
 from app.repo import columns as columns_repo
 from app.repo import links as links_repo
 from app.repo import tasks as tasks_repo
+from app.services import boards as boards_service
 from app.services.common import PRIORITIES, check_enum, check_len, log_event, new_id, now_iso
 
 
-def get_task(conn, task_id: str) -> dict:
+def get_task(conn, user_id: str, task_id: str) -> dict:
     row = tasks_repo.get(conn, task_id)
     if row is None:
         raise NotFound("Задача не найдена")
+    boards_service.get_board(conn, user_id, row["board_id"])  # владение через доску
     return dict(row)
 
 
@@ -56,9 +57,10 @@ def _wip_warning(conn, column: dict) -> dict | None:
     return None
 
 
-def create_task(conn, board_id, column_id, title, description="", priority="normal", due_date=None):
-    if boards_repo.get(conn, board_id) is None:
-        raise NotFound("Доска не найдена")
+def create_task(
+    conn, user_id, board_id, column_id, title, description="", priority="normal", due_date=None
+):
+    boards_service.get_board(conn, user_id, board_id)
     column = _get_column(conn, column_id)
     if column["board_id"] != board_id:
         raise Conflict("Колонка не принадлежит указанной доске")
@@ -86,8 +88,8 @@ def create_task(conn, board_id, column_id, title, description="", priority="norm
     return task, warning
 
 
-def update_task(conn, task_id: str, fields: dict) -> dict:
-    get_task(conn, task_id)
+def update_task(conn, user_id: str, task_id: str, fields: dict) -> dict:
+    get_task(conn, user_id, task_id)
     updates = {}
     if "title" in fields:
         updates["title"] = check_len(fields["title"], 1, 200, "title")
@@ -102,12 +104,12 @@ def update_task(conn, task_id: str, fields: dict) -> dict:
         with conn:
             tasks_repo.update(conn, task_id, updates)
         log_event("task.updated", task_id=task_id, fields=sorted(updates))
-    return get_task(conn, task_id)
+    return get_task(conn, user_id, task_id)
 
 
-def move_task(conn, task_id: str, column_id: str, position: int):
+def move_task(conn, user_id: str, task_id: str, column_id: str, position: int):
     """Атомарное перемещение с полным пересчётом позиций затронутых колонок (§5)."""
-    task = get_task(conn, task_id)
+    task = get_task(conn, user_id, task_id)
     target = _get_column(conn, column_id)
     if target["board_id"] != task["board_id"]:
         raise Conflict("Нельзя переместить задачу на другую доску")
@@ -146,11 +148,11 @@ def move_task(conn, task_id: str, column_id: str, position: int):
         to_column=column_id,
         position=position,
     )
-    return get_task(conn, task_id), warning
+    return get_task(conn, user_id, task_id), warning
 
 
-def delete_task(conn, task_id: str) -> None:
-    task = get_task(conn, task_id)
+def delete_task(conn, user_id: str, task_id: str) -> None:
+    task = get_task(conn, user_id, task_id)
     with conn:
         tasks_repo.delete(conn, task_id)  # связи удаляются каскадом (FK)
         tasks_repo.renumber(
@@ -159,8 +161,8 @@ def delete_task(conn, task_id: str) -> None:
     log_event("task.deleted", task_id=task_id, board_id=task["board_id"])
 
 
-def get_task_with_links(conn, task_id: str) -> dict:
-    task = get_task(conn, task_id)
+def get_task_with_links(conn, user_id: str, task_id: str) -> dict:
+    task = get_task(conn, user_id, task_id)
     links = []
     for row in links_repo.list_for_task(conn, task_id):
         out = row["source_task_id"] == task_id
@@ -184,9 +186,10 @@ def get_task_with_links(conn, task_id: str) -> dict:
     return task
 
 
-def search_tasks(conn, board_id: str, q=None, priority=None, due_before=None) -> list[dict]:
-    if boards_repo.get(conn, board_id) is None:
-        raise NotFound("Доска не найдена")
+def search_tasks(
+    conn, user_id: str, board_id: str, q=None, priority=None, due_before=None
+) -> list[dict]:
+    boards_service.get_board(conn, user_id, board_id)
     if priority:
         check_enum(priority, PRIORITIES, "priority")
     if due_before:

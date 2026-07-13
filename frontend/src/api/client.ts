@@ -1,7 +1,7 @@
 import { ru } from '../i18n/ru';
 import type {
-  Board, BoardFull, BoardListItem, Column, Link, LinkType, Priority,
-  Task, TaskCreated, TaskWithLinks,
+  AuthResponse, Board, BoardFull, BoardListItem, Column, Link, LinkType, Priority,
+  Task, TaskCreated, TaskWithLinks, User,
 } from './types';
 
 export class ApiError extends Error {
@@ -35,6 +35,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
 
   if (!res.ok) {
+    if (res.status === 401 && !path.startsWith('/auth')) {
+      // ponytail: reload вместо шины событий — протухший токен редкое событие,
+      // перезагрузка заодно чистит кэш React Query и выводит на экран входа
+      localStorage.removeItem('kanban_token');
+      window.location.reload();
+    }
     let code = 'UNKNOWN';
     let message = ru.loadError;
     try {
@@ -54,6 +60,13 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 }
 
 export const api = {
+  // Auth
+  register: (body: { email: string; password: string; name?: string }) =>
+    request<AuthResponse>('POST', '/auth/register', body),
+  login: (body: { email: string; password: string }) =>
+    request<AuthResponse>('POST', '/auth/login', body),
+  me: () => request<User>('GET', '/auth/me'),
+
   // Boards
   listBoards: (includeArchived: boolean) =>
     request<BoardListItem[]>('GET', `/boards${includeArchived ? '?include_archived=true' : ''}`),

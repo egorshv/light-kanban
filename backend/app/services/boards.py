@@ -10,18 +10,22 @@ from app.services.common import check_len, log_event, new_id, now_iso
 DEFAULT_COLUMNS = (("Backlog", 0), ("В работе", 0), ("Готово", 1))
 
 
-def get_board(conn, board_id: str) -> dict:
+def get_board(conn, user_id: str, board_id: str) -> dict:
+    """Единая точка проверки владения: чужая доска неотличима от несуществующей (404)."""
     row = boards_repo.get(conn, board_id)
-    if row is None:
+    if row is None or row["owner_id"] != user_id:
         raise NotFound("Доска не найдена")
     return dict(row)
 
 
-def create_board(conn, name: str, description: str = "", with_default_columns: bool = True) -> dict:
+def create_board(
+    conn, user_id: str, name: str, description: str = "", with_default_columns: bool = True
+) -> dict:
     check_len(name, 1, 100, "name")
     now = now_iso()
     board = {
         "id": new_id(),
+        "owner_id": user_id,
         "name": name,
         "description": description or "",
         "created_at": now,
@@ -48,9 +52,9 @@ def create_board(conn, name: str, description: str = "", with_default_columns: b
     return board
 
 
-def get_board_full(conn, board_id: str) -> dict:
+def get_board_full(conn, user_id: str, board_id: str) -> dict:
     """Доска целиком (колонки + задачи) — основной запрос UI, одна выборка на таблицу."""
-    board = get_board(conn, board_id)
+    board = get_board(conn, user_id, board_id)
     columns = [dict(c) for c in columns_repo.list_by_board(conn, board_id)]
     by_column = {c["id"]: c for c in columns}
     for c in columns:
@@ -61,12 +65,12 @@ def get_board_full(conn, board_id: str) -> dict:
     return board
 
 
-def list_boards(conn, include_archived: bool = False) -> list[dict]:
-    return [dict(r) for r in boards_repo.list_all(conn, include_archived)]
+def list_boards(conn, user_id: str, include_archived: bool = False) -> list[dict]:
+    return [dict(r) for r in boards_repo.list_all(conn, user_id, include_archived)]
 
 
-def update_board(conn, board_id: str, fields: dict) -> dict:
-    get_board(conn, board_id)
+def update_board(conn, user_id: str, board_id: str, fields: dict) -> dict:
+    get_board(conn, user_id, board_id)
     updates = {}
     if "name" in fields:
         updates["name"] = check_len(fields["name"], 1, 100, "name")
@@ -79,11 +83,11 @@ def update_board(conn, board_id: str, fields: dict) -> dict:
         with conn:
             boards_repo.update(conn, board_id, updates)
         log_event("board.updated", board_id=board_id, fields=sorted(updates))
-    return get_board(conn, board_id)
+    return get_board(conn, user_id, board_id)
 
 
-def delete_board(conn, board_id: str) -> None:
-    get_board(conn, board_id)
+def delete_board(conn, user_id: str, board_id: str) -> None:
+    get_board(conn, user_id, board_id)
     count = boards_repo.task_count(conn, board_id)
     with conn:
         boards_repo.delete(conn, board_id)

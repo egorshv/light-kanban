@@ -1,13 +1,24 @@
--- Схема из docs.md §5. Единственное расширение (ADR-006): columns.is_final.
+-- Схема из docs.md §5. Расширения: columns.is_final (ADR-006), users + boards.owner_id (auth).
+
+CREATE TABLE users (
+    id            TEXT PRIMARY KEY,              -- uuid v4
+    email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    password_hash TEXT,                          -- NULL для google-only пользователей
+    google_sub    TEXT UNIQUE,                   -- NULL для email-пользователей
+    name          TEXT DEFAULT '',
+    created_at    TEXT NOT NULL                  -- ISO 8601 UTC
+);
 
 CREATE TABLE boards (
     id          TEXT PRIMARY KEY,            -- uuid v4
+    owner_id    TEXT REFERENCES users(id),   -- NULL только у досок, созданных до auth
     name        TEXT NOT NULL CHECK(length(name) BETWEEN 1 AND 100),
     description TEXT DEFAULT '',
     created_at  TEXT NOT NULL,               -- ISO 8601 UTC
     updated_at  TEXT NOT NULL,
     archived_at TEXT
 );
+CREATE INDEX idx_boards_owner ON boards(owner_id);
 
 CREATE TABLE columns (
     id        TEXT PRIMARY KEY,

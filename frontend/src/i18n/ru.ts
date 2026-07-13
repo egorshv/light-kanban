@@ -13,6 +13,19 @@ export const ru = {
   rename: 'Переименовать',
   edit: 'Редактировать',
 
+  // Аутентификация
+  loginTitle: 'Вход',
+  registerTitle: 'Регистрация',
+  emailPlaceholder: 'Email',
+  passwordPlaceholder: 'Пароль (не менее 8 символов)',
+  namePlaceholder: 'Имя (необязательно)',
+  loginButton: 'Войти',
+  registerButton: 'Зарегистрироваться',
+  switchToRegister: 'Нет аккаунта? Регистрация',
+  switchToLogin: 'Уже есть аккаунт? Войти',
+  googleLogin: 'Войти через Google',
+  logout: 'Выйти',
+
   // Список досок
   boardsTitle: 'Доски',
   newBoard: '＋ Новая доска',

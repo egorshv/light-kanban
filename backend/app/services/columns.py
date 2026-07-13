@@ -14,15 +14,18 @@ def _check_wip(wip_limit):
     return wip_limit
 
 
-def get_column(conn, column_id: str) -> dict:
+def get_column(conn, user_id: str, column_id: str) -> dict:
     row = columns_repo.get(conn, column_id)
     if row is None:
         raise NotFound("Колонка не найдена")
+    boards_service.get_board(conn, user_id, row["board_id"])  # владение через доску
     return dict(row)
 
 
-def create_column(conn, board_id, name, color=None, wip_limit=None, is_final=False) -> dict:
-    boards_service.get_board(conn, board_id)
+def create_column(
+    conn, user_id, board_id, name, color=None, wip_limit=None, is_final=False
+) -> dict:
+    boards_service.get_board(conn, user_id, board_id)
     check_len(name, 1, 50, "name")
     _check_wip(wip_limit)
     column = {
@@ -37,11 +40,11 @@ def create_column(conn, board_id, name, color=None, wip_limit=None, is_final=Fal
     with conn:
         columns_repo.insert(conn, column)
     log_event("column.created", column_id=column["id"], board_id=board_id)
-    return get_column(conn, column["id"])
+    return get_column(conn, user_id, column["id"])
 
 
-def update_column(conn, column_id: str, fields: dict) -> dict:
-    get_column(conn, column_id)
+def update_column(conn, user_id: str, column_id: str, fields: dict) -> dict:
+    get_column(conn, user_id, column_id)
     updates = {}
     if "name" in fields:
         updates["name"] = check_len(fields["name"], 1, 50, "name")
@@ -55,23 +58,23 @@ def update_column(conn, column_id: str, fields: dict) -> dict:
         with conn:
             columns_repo.update(conn, column_id, updates)
         log_event("column.updated", column_id=column_id, fields=sorted(updates))
-    return get_column(conn, column_id)
+    return get_column(conn, user_id, column_id)
 
 
-def move_column(conn, column_id: str, position: int) -> dict:
-    column = get_column(conn, column_id)
+def move_column(conn, user_id: str, column_id: str, position: int) -> dict:
+    column = get_column(conn, user_id, column_id)
     with conn:
         ids = [r["id"] for r in columns_repo.list_by_board(conn, column["board_id"])]
         ids.remove(column_id)
         ids.insert(max(0, min(position, len(ids))), column_id)
         columns_repo.renumber(conn, ids)  # полный пересчёт в транзакции (§5)
     log_event("column.moved", column_id=column_id, position=position)
-    return get_column(conn, column_id)
+    return get_column(conn, user_id, column_id)
 
 
-def delete_column(conn, column_id: str, move_tasks_to: str | None = None) -> None:
+def delete_column(conn, user_id: str, column_id: str, move_tasks_to: str | None = None) -> None:
     """US-B4: два явных сценария — перенос задач в целевую колонку либо 409."""
-    column = get_column(conn, column_id)
+    column = get_column(conn, user_id, column_id)
     if columns_repo.count_by_board(conn, column["board_id"]) == 1:
         raise Conflict("Нельзя удалить последнюю колонку доски", code="LAST_COLUMN")
     tasks = tasks_repo.list_by_column(conn, column_id)
@@ -82,7 +85,7 @@ def delete_column(conn, column_id: str, move_tasks_to: str | None = None) -> Non
                 "В колонке есть задачи: укажите move_tasks_to или удалите задачи",
                 code="COLUMN_NOT_EMPTY",
             )
-        target = get_column(conn, move_tasks_to)
+        target = get_column(conn, user_id, move_tasks_to)
         if target["id"] == column_id:
             raise Conflict("Целевая колонка совпадает с удаляемой")
         if target["board_id"] != column["board_id"]:
