@@ -9,6 +9,9 @@ interface Props {
 /** Кнопка «⋯» с выпадающим меню; закрывается по клику вне и Esc. */
 export function Menu({ buttonTestId, buttonLabel = '⋯', children }: Props) {
   const [open, setOpen] = useState(false);
+  // ponytail: fixed-позиционирование по клику, чтобы dropdown не резался overflow-скроллом
+  // колонок; при скролле с открытым меню оно не следует за кнопкой (закрывается кликом/Esc).
+  const [pos, setPos] = useState({ top: 0, right: 0 });
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,13 +40,19 @@ export function Menu({ buttonTestId, buttonLabel = '⋯', children }: Props) {
         data-testid={buttonTestId}
         onClick={(e) => {
           e.stopPropagation();
+          const r = e.currentTarget.getBoundingClientRect();
+          setPos({ top: r.bottom + 2, right: window.innerWidth - r.right });
           setOpen((o) => !o);
         }}
       >
         {buttonLabel}
       </button>
       {open && (
-        <div className="menu-dropdown" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="menu-dropdown"
+          style={{ position: 'fixed', top: pos.top, right: pos.right }}
+          onClick={(e) => e.stopPropagation()}
+        >
           {children(() => setOpen(false))}
         </div>
       )}
